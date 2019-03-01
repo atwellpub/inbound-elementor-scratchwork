@@ -29,7 +29,7 @@ if (!class_exists('Inbound_Elementor_Builder')) {
          */
         public static function define_constants() {
             define('INBOUND_ELEMENTOR_TEMPLATE_BUILDER_CURRENT_VERSION', '1.0.8');
-            define('INBOUND_ELEMENTOR_TEMPLATE_BUILDER_LABEL', __('Avia Template Builder Integration', 'inbound-pro'));
+            define('INBOUND_ELEMENTOR_TEMPLATE_BUILDER_LABEL', __('Elementor Template Builder Integration', 'inbound-pro'));
             define('INBOUND_ELEMENTOR_TEMPLATE_BUILDER_SLUG', 'inbound-cornerstone-builder');
             define('INBOUND_ELEMENTOR_TEMPLATE_BUILDER_FILE', __FILE__);
             define('INBOUND_ELEMENTOR_TEMPLATE_BUILDER_REMOTE_ITEM_NAME', 'cornerstone-page-builder-integration');
@@ -56,10 +56,6 @@ if (!class_exists('Inbound_Elementor_Builder')) {
 
             /* save variation */
             add_action('elementor/db/before_save' , array( __CLASS__ , 'save_elementor_data') , 10 , 2);
-            //add_filter('elementor/documents/ajax_save/return_data' , array( __CLASS__ , 'save_content') , 10 , 2);
-
-            /* load variation */
-            //add_filter('elementor/frontend/builder_content_data' , array( __CLASS__ , 'load_landing_page_frontend') , 10 , 2);
 
             /* remove native landing page filters */
             add_action('init' , function() {
@@ -134,10 +130,6 @@ if (!class_exists('Inbound_Elementor_Builder')) {
             $variation_id = $parts[1];
             $post_content = $post->post_content;
 
-            error_log('save_elementor_data');
-            error_log('variation id');
-            error_log($variation_id);
-
             if ( $variation_id > 0 ) {
                 $content_key = 'content' . '-' . $variation_id;
                 $elementor_key = 'inboundnow_elementor_data' . '-' . $variation_id;
@@ -160,8 +152,6 @@ if (!class_exists('Inbound_Elementor_Builder')) {
             if ( $post->post_type !='landing-page' ) {
                 return;
             }
-
-            error_log('save_content');
 
             $referral = $_SERVER["HTTP_REFERER"];
             $parts = explode('lp-variation-id=' , $referral);
@@ -196,11 +186,7 @@ if (!class_exists('Inbound_Elementor_Builder')) {
                 $elementor_key = 'inboundnow_elementor_data';
             }
 
-            error_log('load_landing_page_frontend');
-            error_log('variation id');
-            error_log($variation_id);
 
-            //error_log('loading ' . $elementor_key);
             $elements_json = get_post_meta( $post->ID  , $elementor_key , true );
 
             $elements = json_decode(stripslashes($elements_json),true);
