@@ -55,16 +55,21 @@ if (!class_exists('Inbound_Elementor_Builder')) {
             add_filter( 'elementor/document/urls/preview' , array(__CLASS__, 'filter_preview') ,10 ,2 );
 
             /* save variation */
-            add_action('elementor/db/before_save' , array( __CLASS__ , 'save_landing_page') , 10 , 2);
+            add_action('elementor/db/before_save' , array( __CLASS__ , 'save_elementor_data') , 10 , 2);
+            //add_filter('elementor/documents/ajax_save/return_data' , array( __CLASS__ , 'save_content') , 10 , 2);
 
             /* load variation */
-            add_filter('elementor/frontend/builder_content_data' , array( __CLASS__ , 'load_landing_page') , 10 , 2);
+            //add_filter('elementor/frontend/builder_content_data' , array( __CLASS__ , 'load_landing_page_frontend') , 10 , 2);
 
             /* remove native landing page filters */
             add_action('init' , function() {
-                remove_filter('the_content', array( 'Landing_Pages_Template_Switcher' , 'display_landing_page_content' ) , 10, 2);
-                remove_filter('get_the_content', array( 'Landing_Pages_Template_Switcher' , 'display_landing_page_content' ) , 10, 2);
+                if(!isset($_GET['elementor-preview'])) {
+                    remove_filter('the_content', array( 'Landing_Pages_Template_Switcher' , 'display_landing_page_content' ) , 10, 2);
+                    remove_filter('get_the_content', array( 'Landing_Pages_Template_Switcher' , 'display_landing_page_content' ) , 10, 2);
+                }
             });
+
+            add_filter( 'get_post_metadata', array( __CLASS__ , 'load_landing_page_preview' ), 100 , 4  );
 
             if (is_admin()) {
                 /* Setup Automatic Updating & Licensing */
@@ -74,6 +79,7 @@ if (!class_exists('Inbound_Elementor_Builder')) {
         }
 
         public static function filter_preview( $url  ) {
+
             if (isset($_GET['lp-variation-id'])) {
                 $url = $url . '&lp-variation-id=' . $_GET['lp-variation-id'];
             }
@@ -113,7 +119,7 @@ if (!class_exists('Inbound_Elementor_Builder')) {
         }
 
 
-        public function save_landing_page( $post_id , $is_meta )   {
+        public function save_elementor_data( $post_id , $is_meta )   {
             global $post;
 
             if ( $post->post_type !='landing-page' ) {
@@ -123,14 +129,14 @@ if (!class_exists('Inbound_Elementor_Builder')) {
             $actions = json_decode(stripslashes($_POST['actions']),true);
             $elements =  wp_slash( wp_json_encode( $actions['save_builder']['data']['elements'] ) );
 
-            //error_log(print_r($actions,true));
-            //error_log(print_r($elements,true));
-
-
             $referral = $_SERVER["HTTP_REFERER"];
             $parts = explode('lp-variation-id=' , $referral);
             $variation_id = $parts[1];
             $post_content = $post->post_content;
+
+            error_log('save_elementor_data');
+            error_log('variation id');
+            error_log($variation_id);
 
             if ( $variation_id > 0 ) {
                 $content_key = 'content' . '-' . $variation_id;
@@ -144,11 +150,37 @@ if (!class_exists('Inbound_Elementor_Builder')) {
             update_post_meta( $post->ID  , $content_key , $post_content );
             update_post_meta( $post->ID  , $elementor_key , $elements );
 
+        }
 
+        public function save_content( $data , $document )   {
+            global $post;
+
+            $post = $document->get_post();
+
+            if ( $post->post_type !='landing-page' ) {
+                return;
+            }
+
+            error_log('save_content');
+
+            $referral = $_SERVER["HTTP_REFERER"];
+            $parts = explode('lp-variation-id=' , $referral);
+            $variation_id = $parts[1];
+            $post_content = $post->post_content;
+
+            if ( $variation_id > 0 ) {
+                $content_key = 'content' . '-' . $variation_id;
+            } else {
+                $content_key = 'content';
+            }
+
+            update_post_meta( $post->ID  , $content_key , $post_content );
+
+            return $data;
         }
 
 
-        public function load_landing_page( $data , $post_id )   {
+        public function load_landing_page_frontend( $data , $post_id )   {
             global $post;
 
 
@@ -156,7 +188,7 @@ if (!class_exists('Inbound_Elementor_Builder')) {
                 return;
             }
 
-            $variation_id = $_GET['lp-variation-id'];
+            $variation_id = Landing_Pages_Variations::get_current_variation_id();
 
             if ( $variation_id > 0 ) {
                 $elementor_key = 'inboundnow_elementor_data' . '-' . $variation_id;
@@ -164,12 +196,43 @@ if (!class_exists('Inbound_Elementor_Builder')) {
                 $elementor_key = 'inboundnow_elementor_data';
             }
 
+            error_log('load_landing_page_frontend');
+            error_log('variation id');
+            error_log($variation_id);
+
             //error_log('loading ' . $elementor_key);
             $elements_json = get_post_meta( $post->ID  , $elementor_key , true );
 
             $elements = json_decode(stripslashes($elements_json),true);
 
             return $elements;
+
+        }
+
+
+        public function load_landing_page_preview( $metadata, $object_id, $meta_key, $single )   {
+            global $post;
+
+
+            if ( $post->post_type !='landing-page' ) {
+                return;
+            }
+
+            if ( !isset( $meta_key ) || $meta_key != '_elementor_data' ) {
+                return $metadata;
+            }
+
+            $variation_id = Landing_Pages_Variations::get_current_variation_id();
+
+            if ( $variation_id > 0 ) {
+                $elementor_key = 'inboundnow_elementor_data' . '-' . $variation_id;
+            } else {
+                $elementor_key = 'inboundnow_elementor_data';
+            }
+
+            $elementor_data = get_post_meta( $post->ID  , $elementor_key , true );
+
+            return $elementor_data;
 
         }
 
